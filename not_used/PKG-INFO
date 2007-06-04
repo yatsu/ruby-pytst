@@ -1,0 +1,18 @@
+Metadata-Version: 1.0
+Name: pytst
+Version: 1.14
+Summary: An implementation of a Ternary Search Tree (TST) in C++ with Python bindings
+Home-page: http://nicolas.lehuen.com/index.php/Pytst
+Author: Nicolas Lehuen
+Author-email: nicolas@lehuen.com
+License: UNKNOWN
+Download-URL: http://nicolas.lehuen.com/download/pytst/
+Description: UNKNOWN
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)
+Classifier: Programming Language :: C++
+Classifier: Programming Language :: Python
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Scientific/Engineering :: Information Analysis
