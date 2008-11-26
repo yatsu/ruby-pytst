@@ -29,6 +29,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 
 #ifdef ZIPPED_TREE
 #include <boost/iostreams/filtering_stream.hpp>
@@ -163,42 +164,6 @@ private:
     RubyReference dumps,loads;
 };
 
-ObjectSerializer::ObjectSerializer() {
-    /*
-    RubyReference cPickle(PyImport_Import(name.get()),0);
-    dumps = RubyReference(PyObject_GetAttrString(cPickle.get(),"dumps"),0);
-    loads = RubyReference(PyObject_GetAttrString(cPickle.get(),"loads"),0);
-    */
-}
-
-
-void ObjectSerializer::write(std::ostream& file,RubyReference data) {
-    /*
-    RubyReference call(Py_BuildValue("Oi",data.get(),2),0);
-    RubyReference result(PyObject_CallObject(dumps.get(),call.get()),0);
-    char *string;
-    int length;
-    PyString_AsStringAndSize(result.get(),&string,&length);
-    file.write((char*)(&length),sizeof(int));
-    file.write(string,length);
-    */
-}
-
-RubyReference ObjectSerializer::read(std::istream& file) {
-    /*
-    int length;
-    file.read((char*)(&length),sizeof(int));
-    char* string=(char*)tst_malloc(length);
-    file.read(string,length);
-    RubyReference dumped(PyString_FromStringAndSize(string,length),0);
-    RubyReference call(Py_BuildValue("(O)",dumped.get()),0);
-    RubyReference result(PyObject_CallObject(loads.get(),call.get()),0);
-    tst_free(string);
-    return result;
-    */
-    return RubyReference();
-}
-
 class TST;
 
 template <typename iterator_type>
@@ -258,48 +223,37 @@ public:
     virtual ~TST() {
     }
 
-    virtual RubyReference write_to_file(RubyReference file) {
-        /*
-        if(!PyString_CheckExact(file.get())) {
-            throw TSTException("Argument of write_to_file() must be a string object");
-        }
-        std::ofstream out(PyString_AsString(file.get()),std::ofstream::binary|std::ofstream::out|std::ofstream::trunc);
-        out.exceptions(std::ofstream::eofbit | std::ofstream::failbit | std::ofstream::badbit);
-
-#ifdef ZIPPED_TREE
-        boost::iostreams::filtering_ostream fout;
-        fout.push(boost::iostreams::zlib_compressor());
-        fout.push(out);
-        this->write(fout);
-        fout.strict_sync();
-#else
+    virtual RubyReference marshal_dump() {
+        std::stringstream out("",std::ios::out|std::ios::binary);
         this->write(out);
-#endif        
-        
-        out.close();
-        */
+        return RubyReference(rb_str_new(out.str().c_str(),out.str().length()));
+    }
+
+    /*
+    virtual TST* marshal_load(RubyReference data) {
+        return new TST();
+    }
+    */
+
+    virtual void load(VALUE str) {
+        std::stringstream in("",std::ios::in|std::ios::out|std::ios::binary);
+        in.write(RSTRING(str)->ptr, RSTRING(str)->len);
+        this->read(in);
+    }
+
+    virtual RubyReference write_to_file(RubyReference file) {
+        VALUE f = file.get();
+        std::ofstream out(StringValuePtr(f),std::ofstream::binary|std::ofstream::out|std::ofstream::trunc);
+        out.exceptions(std::ofstream::eofbit | std::ofstream::failbit | std::ofstream::badbit);
+        this->write(out);
         return RubyReference();
     }
 
     virtual RubyReference read_from_file(RubyReference file) {
-        /*
-        if(!PyString_CheckExact(file.get())) {
-            throw TSTException("Argument of read_from_file() must be a string object");
-        }
-        std::ifstream in(PyString_AsString(file.get()),std::ifstream::binary|std::ifstream::in);
+        VALUE f = file.get();
+        std::ifstream in(StringValuePtr(f),std::ifstream::binary|std::ifstream::in);
         in.exceptions(std::ifstream::eofbit | std::ifstream::failbit | std::ifstream::badbit);
-        
-#ifdef ZIPPED_TREE
-        boost::iostreams::filtering_istream fin;
-        fin.push(boost::iostreams::zlib_decompressor());
-        fin.push(in);
-        this->read(fin);
-#else
         this->read(in);
-#endif        
-
-        in.close();
-        */
         return RubyReference();
     }
 
@@ -344,3 +298,24 @@ public:
     using tst<char,RubyReference,memory_storage<char,RubyReference>,ObjectSerializer,string_type >::scan; 
     using tst<char,RubyReference,memory_storage<char,RubyReference>,ObjectSerializer,string_type >::scan_with_stop_chars;
 };
+
+ObjectSerializer::ObjectSerializer() {}
+
+void ObjectSerializer::write(std::ostream& file,RubyReference data) {
+    VALUE str = rb_marshal_dump(data.get(), Qnil);
+    int len = RSTRING(str)->len;
+    char *val = RSTRING(str)->ptr;
+    file.write((char*)(&len),sizeof(int));
+    file.write(val,len);
+}
+
+RubyReference ObjectSerializer::read(std::istream& file) {
+    int length;
+    file.read((char*)(&length),sizeof(int));
+    char* string=(char*)tst_malloc(length);
+    file.read(string,length);
+
+    VALUE obj = rb_marshal_load(rb_str_new(string,length));
+    tst_free(string);
+    return RubyReference(obj);
+}

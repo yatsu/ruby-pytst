@@ -104,3 +104,31 @@ static void mark_TST(void* ptr) {
     delete action;
 }
 %}
+
+%wrapper %{
+SWIGINTERN VALUE
+_wrap_TST_marshal_load(int argc, VALUE *argv, VALUE self) {
+  TST *result = 0 ;
+
+  if ((argc < 1) || (argc > 1)) {
+    rb_raise(rb_eArgError, "wrong # of arguments(%d for 1)",argc); SWIG_fail;
+  }
+  {
+    try {
+      result = (TST *)new TST();
+      result->load(argv[0]);
+      DATA_PTR(self) = result;
+    }
+    catch (std::exception e) {
+      rb_raise(rb_eRuntimeError, "%s", e.what());
+    }
+  }
+  return self;
+fail:
+  return Qnil;
+}
+%}
+
+%init %{
+rb_define_method(cTST.klass, "marshal_load", VALUEFUNC(_wrap_TST_marshal_load), -1);
+%}
